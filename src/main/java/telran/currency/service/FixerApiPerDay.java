@@ -1,9 +1,9 @@
 package telran.currency.service;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.*;
 import java.net.http.HttpResponse.BodyHandlers;
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.json.JSONObject;
@@ -13,18 +13,21 @@ public class FixerApiPerDay extends AbstractCurrencyConvertor {
 	HttpClient httpClient;
 	HttpRequest request;
 	HashMap<String, Double> map;
-	LocalDateTime time;
+	Date time;
 
 	public FixerApiPerDay() throws Exception {
 		this.httpClient = HttpClient.newHttpClient();
 		this.request = HttpRequest.newBuilder(new URI(uriString)).build();
 		rates = getRates();
 	}
-
+    protected Date timestamp() throws Exception {
+    	JSONObject jsonObject = getJSONObject();
+    	int timestamp = jsonObject.getInt("timestamp");
+    	return new Date(timestamp);
+    }
 	protected HashMap<String, Double> getRates() throws Exception {
-		HttpResponse<String> response =
-				httpClient.send(request, BodyHandlers.ofString());
-		JSONObject jsonObject = new JSONObject(response.body());
+		JSONObject jsonObject = getJSONObject();
+		
 		JSONObject jsonRates = jsonObject.getJSONObject("rates");
 		
 		return jsonRates.keySet().stream()
@@ -34,6 +37,12 @@ public class FixerApiPerDay extends AbstractCurrencyConvertor {
                         (existing, replacement) -> existing, 
                         HashMap::new 
                 ));
+	}
+	private JSONObject getJSONObject() throws IOException, InterruptedException {
+		HttpResponse<String> response =
+				httpClient.send(request, BodyHandlers.ofString());
+		JSONObject jsonObject = new JSONObject(response.body());
+		return jsonObject;
 	}
 
 	@Override
@@ -55,13 +64,13 @@ public class FixerApiPerDay extends AbstractCurrencyConvertor {
 	}
 
 	private void refresh() {
-		if(time == null || time.isBefore(LocalDateTime.now().minusHours(24))) {
+		if(time == null || time.before(new Date(System.currentTimeMillis() - 24*3600*1000))) {
 		try {
 			map = getRates();
 		} catch (Exception e) {
 			System.out.print(e.getMessage());
 		}
-		time = LocalDateTime.now();
+		time = new Date();
 		}
 	}
 
