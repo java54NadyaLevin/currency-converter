@@ -17,8 +17,8 @@ public static List<Item> getItems(CurrencyConvertor currencyConvertor, HashSet<S
 	
 	
 	Item[] items = {
-			Item.of("Show 10 strongest currencies", CurrencyItems::getStrongestCurrencies),
-			Item.of("Show 10 weakest currencies", CurrencyItems::getWeakestCurrencies),
+			Item.of("Show strongest currencies", CurrencyItems::getStrongestCurrencies),
+			Item.of("Show weakest currencies", CurrencyItems::getWeakestCurrencies),
 			Item.of("Convert currencies", CurrencyItems::convert),
 	};
 			
@@ -26,15 +26,17 @@ public static List<Item> getItems(CurrencyConvertor currencyConvertor, HashSet<S
 }
 	
 	private static void getStrongestCurrencies(InputOutput io) {
-		getCurrencies(io, true);
+		int amount = io.readNumberRange("Amount of currencies to be printed", "Wrong amount", 1, currencyConvertor.getAllCodes().size()).intValue();
+		getCurrencies(io, amount, true);
 	}
 	
 	private static void getWeakestCurrencies(InputOutput io) {
-		getCurrencies(io, false);
+		int amount = io.readNumberRange("Amount of currencies to be printed", "Wrong amount", 1, currencyConvertor.getAllCodes().size()).intValue();
+		getCurrencies(io, amount, false);
 	}
 
-	private static void getCurrencies(InputOutput io, boolean getStrongest) {
-		List<String> currencies = getStrongest ? currencyConvertor.strongestCurrencies(10) : currencyConvertor.weakestCurrencies(10);
+	private static void getCurrencies(InputOutput io, int amount, boolean getStrongest) {
+		List<String> currencies = getStrongest ? currencyConvertor.strongestCurrencies(amount) : currencyConvertor.weakestCurrencies(amount);
 		for(String currency:currencies) {
 		io.writeLine(currency);
 		}

@@ -1,9 +1,9 @@
 package telran.currency.service;
 
-import java.io.IOException;
 import java.net.URI;
 import java.net.http.*;
 import java.net.http.HttpResponse.BodyHandlers;
+import java.time.*;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.json.JSONObject;
@@ -13,36 +13,31 @@ public class FixerApiPerDay extends AbstractCurrencyConvertor {
 	HttpClient httpClient;
 	HttpRequest request;
 	HashMap<String, Double> map;
-	Date time;
+	Instant time;
+	JSONObject jsonObject;
 
 	public FixerApiPerDay() throws Exception {
+		getJSON();
+		rates = getRates();
+		time = getTime();
+	}
+
+	private Instant getTime() {
+		return Instant.ofEpochMilli(jsonObject.getInt("timestamp"));
+	}
+
+	protected HashMap<String, Double> getRates() throws Exception {
+		JSONObject jsonRates = jsonObject.getJSONObject("rates");
+		return jsonRates.keySet().stream().collect(Collectors.toMap(key -> key, key -> jsonRates.getDouble(key),
+				(existing, replacement) -> existing, HashMap::new));
+	}
+
+	private void getJSON() throws Exception {
 		this.httpClient = HttpClient.newHttpClient();
 		this.request = HttpRequest.newBuilder(new URI(uriString)).build();
-		rates = getRates();
-	}
-    protected Date timestamp() throws Exception {
-    	JSONObject jsonObject = getJSONObject();
-    	int timestamp = jsonObject.getInt("timestamp");
-    	return new Date(timestamp);
-    }
-	protected HashMap<String, Double> getRates() throws Exception {
-		JSONObject jsonObject = getJSONObject();
+		HttpResponse<String> response = httpClient.send(request, BodyHandlers.ofString());
+		jsonObject = new JSONObject(response.body());
 		
-		JSONObject jsonRates = jsonObject.getJSONObject("rates");
-		
-		return jsonRates.keySet().stream()
-                .collect(Collectors.toMap(
-                        key -> key,
-                        key -> jsonRates.getDouble(key),
-                        (existing, replacement) -> existing, 
-                        HashMap::new 
-                ));
-	}
-	private JSONObject getJSONObject() throws IOException, InterruptedException {
-		HttpResponse<String> response =
-				httpClient.send(request, BodyHandlers.ofString());
-		JSONObject jsonObject = new JSONObject(response.body());
-		return jsonObject;
 	}
 
 	@Override
@@ -64,13 +59,14 @@ public class FixerApiPerDay extends AbstractCurrencyConvertor {
 	}
 
 	private void refresh() {
-		if(time == null || time.before(new Date(System.currentTimeMillis() - 24*3600*1000))) {
-		try {
-			map = getRates();
-		} catch (Exception e) {
-			System.out.print(e.getMessage());
-		}
-		time = new Date();
+		if (time == null || time.isBefore(Instant.now().minus(Duration.ofHours(24)))) {
+			try {
+				map = getRates();
+				time = getTime();
+			} catch (Exception e) {
+				System.out.print(e.getMessage());
+			}
+
 		}
 	}
 
